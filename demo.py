@@ -71,7 +71,7 @@ def main():
         
         # print("box: ", boxes.shape, "01010101010101010110")
 
-        # Detect humans in image
+        # Detect hu25mans in image
         # det_out = detector(img_cv2)
 
         # det_instances = det_out['instances']
@@ -98,9 +98,11 @@ def main():
             pred_cam = out['pred_cam']
             box_center = batch["box_center"].float()
             box_size = batch["box_size"].float()
-            # print("kkkkkkkkkkkkk\n", box_size, "lllllllllllllll]\n")
+            # print("kkkkkkkkkkkkk\n", box_size, "lllllllllllllll]\n") # tensor([2871.7000], device='cuda:0')
+            # print("kkkkkkkkkkkkk\n", box_size.shape, "lllllllllllllll]\n") # torch.Size([1])
             img_size = batch["img_size"].float()
-            print("lllllllllllll\n", img_size, "mmmmmmmmmmmmmm\n")
+            # print("lllllllllllll\n", img_size, "mmmmmmmmmmmmmm\n") # tensor([[4016., 6016.]], device='cuda:0')
+            # print("lllllllllllll\n", img_size.shape, "mmmmmmmmmmmmmm\n") # torch.Size([1, 2])
             scaled_focal_length = model_cfg.EXTRA.FOCAL_LENGTH / model_cfg.MODEL.IMAGE_SIZE * img_size.max()
             pred_cam_t_full = cam_crop_to_full(pred_cam, box_center, box_size, img_size, scaled_focal_length).detach().cpu().numpy()
 

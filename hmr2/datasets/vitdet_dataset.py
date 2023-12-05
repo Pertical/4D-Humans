@@ -103,14 +103,14 @@ class ViTDetDataset(torch.utils.data.Dataset):
             return item
         
         pose_landmarks = results_mediapipe.pose_landmarks.landmark
-        # pose_world_landmarks = results_mediapipe.pose_world_landmarks
+        # pose_world_landet_instances.pred_boxes.tensordmarks = results_mediapipe.pose_world_landmarks
         # https://github.com/googlesamples/mediapipe/blob/main/examples/pose_landmarker/python/%5BMediaPipe_Python_Tasks%5D_Pose_Landmarker.ipynb
 
         # print(pose_landmarks)
         h, w, c = img_patch_cv.shape
         # image_2djoint = np.copy(img_patch_cv)
         keypoints_2d_list = []
-        for point in pose_landmarks:
+        for point in posdet_instances.pred_boxes.tensore_landmarks:
             x = point.x * w
             y = point.y * h
             z = point.visibility

@@ -19,7 +19,7 @@ from hmr2.models import load_poselift
 from hmr2.utils.render_openpose import render_openpose
 
 from hmr2.utils.geometry import aa_to_rotmat, perspective_projection, rotmat_to_angle_axis
-
+25
 import shutil
 
 import json
@@ -186,7 +186,7 @@ def main():
                 input_keypoints_2d = batch['input_keypoints_2d'][n]
                 input_keypoints_2d[:, :-1] = input_patch.shape[1] * (input_keypoints_2d[:, :-1] + 0.5)
                 input_keypoints_2d = input_keypoints_2d.cpu().numpy().astype(np.float32)
-
+                print(input_keypoints_2d.shape,"")
                 input_keypoints_2d_img = render_openpose(255*input_patch.copy(), input_keypoints_2d)
                 final_img = np.concatenate([255*input_patch, input_keypoints_2d_img, 255*regression_img], axis=1)
 
