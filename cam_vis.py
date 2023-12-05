@@ -2,6 +2,7 @@
 import pyrealsense2 as rs 
 
 import cv2 
+import time 
 
 import argparse
 
@@ -35,7 +36,7 @@ import neural_renderer as nr
 from ultralytics import YOLO
 
 
-
+LIGHT_BLUE=(0.65098039,  0.74117647,  0.85882353)
 YOLO_model = YOLO('yolov8n-pose.pt')  # load an official model
 YOLO_model.predict(classes=0)
 
@@ -97,8 +98,14 @@ def main():
     os.makedirs(args.out_folder, exist_ok=True)
 
     LIGHT_BLUE=(0.65098039,  0.74117647,  0.85882353)
-    
 
+
+    previous_frame_time = 0
+    new_frame_time = 0
+
+    model_start_time = 0
+    model_end_time = 0
+    
     while True:
         # ------------------load detector------------------
         frames = pipeline.wait_for_frames()
@@ -106,7 +113,7 @@ def main():
 
         color_image = np.asanyarray(color_frame.get_data())
 
-        yolo_out = YOLO_model(color_image, stream=True, verbose=False)
+        yolo_out = YOLO_model(color_image, stream=True, verbose=True)
 
         box_image = color_image.copy()
 
@@ -157,8 +164,8 @@ def main():
                     class_name = class_list[cls_id]
                     
                     # get normalized xy coordinates
-                    xyn = keypoints_xyn[0, :, :2]  # Shape: (1, 17, 2)
-                    xyn = xyn.reshape(1,17,2)
+                    xy = keypoints_xyn[0, :, :2]  # Shape: (1, 17, 2)
+                    xy = xy.reshape(1,17,2)
                     #rint(xyn)
                     # print(xyn.shape)
                     
@@ -166,11 +173,12 @@ def main():
                     conf = conf.reshape(1, 17, 1)  # Reshape to (1, 17, 1)
 
                     # Convert numpy arrays to torch tensors
-                    xyn_tensor = torch.from_numpy(xyn).to(device)
-                    confidence_tensor = torch.from_numpy(conf).to(device)
+                    xy_tensor = torch.from_numpy(xy).to(device)
+                    confidence_tensor = torch.from_numpy(conf>0.7).float().to(device)
+                    
 
                     # Concatenate xyn and confidence to get a tensor of shape (1, 17, 3)
-                    combined_keypoints = torch.cat((xyn_tensor, confidence_tensor), dim=-1)
+                    combined_keypoints = torch.cat((xy_tensor, confidence_tensor), dim=-1)
 
                     # Now, combined_keypoints contains the normalized keypoints with their confidence values
                     # print("Combined Keypoints:", combined_keypoints.shape) (1,17,3)
@@ -226,9 +234,23 @@ def main():
         else:
             assert False, "No detections found by YOLOv8"
 
+        # model_start_time = time.time()
         output_pose = model(test_dict)
 
+        # model_end_time = time.time()
+
+        # model_inference_time = model_end_time - model_start_time
+        # print("Model inference time: ", model_inference_time)
         
+
+        box_image_T =torch.from_numpy(color_image.copy().transpose(2, 0, 1)).float().to(device)
+        #print(box_image_T.shape, "box_image_T shape")
+        box_image = renderer(output_pose['pred_vertices'][0].detach().cpu().numpy(),
+                                        output_pose['pred_cam_t'][0].detach().cpu().numpy(),
+                                        box_image_T/255,
+                                        mesh_base_color=LIGHT_BLUE,
+                                        scene_bg_color=(0, 0, 0),
+                                        )
         # print(output_pose['pred_keypoints_3d'].shape) # torch.Size([1, 44, 3])
         # print(output_pose['pred_vertices'].shape) # torch.Size([1, 6890, 3])
         # print(J_regressor.shape,"J regressor shape coco") # (?,6890)
@@ -239,7 +261,7 @@ def main():
         
         # print(output_3d_kpts[0,:], "output_3d_kpts 0") # (17, 3)
         # # print(output_3d_kpts.shape, "output_3d_kpts shape") # (17, 3)
-        print(output_pose.keys())
+        #print(output_pose.keys())
         # print(output_pose['pred_cam'], output_pose['pred_cam_t'],"pred_cam_/t shape")
         """find smpl coco regressor"""
         # now do pnp
@@ -251,31 +273,43 @@ def main():
         # Tvec=output_pose['pred_cam_t'].detach().cpu().numpy().squeeze()
         verts_2d,_=cv2.projectPoints(output_pose['pred_vertices'].detach().cpu().numpy().squeeze(), Rvec, Tvec, camera_matrix, dist_coeffs)
         verts_2d=np.ascontiguousarray(verts_2d.reshape(-1,2))
-        verts_2d[:,1]=height-verts_2d[:,1]
-        verts_2d[:,0]=width-verts_2d[:,0]
-        # print(verts_2d.shape, "verts_2d shape")
+        # verts_2d[:,1]=height-verts_2d[:,1]
+        # verts_2d[:,0]=width-verts_2d[:,0]
+        print(verts_2d.shape, "verts_2d shape")
         # now draw verts!
 
 
-        for vert in range(verts_2d.shape[0]):
+        # for i in range(verts_2d.shape[0]):
+        #     cv2.circle(box_image, (int(verts_2d[i, 0]), int(verts_2d[i, 1])), 1, (0, 0, 255), -1)
+        
+        # for i in range(verts_2d.shape[0]):
+        #     cv2.circle(box_image, (int(verts_2d[i, 0]), int(verts_2d[i, 1])), 1, (0, 0, 255), -1)
 
-            cv2.circle(box_image, (int(verts_2d[vert,0]), int(verts_2d[vert,1])), 1, (0, 0, 255), -1)
+
         # do multipication with smpl regressor@pred_vertices
         #do pnp to get the camera pose
 
         # print(output_test)
         
         #Image presentation section
-        output_images = [(color_image, 'Camera Input'), 
-                         (box_image, 'Bbox&Pose')
-                         ]
+        # output_images = [(color_image, 'Camera Input'), 
+        #                  (box_image, 'Bbox&Pose')
+        #                  ]
 
         # for img, text in output_images:
         #             cv2.putText(img, text, (int(20), int(20)), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
         
-        output_image = np.concatenate([img for img, _ in output_images], axis=1)   
-        cv2.imshow('Output', output_image)
+        #output_image = np.concatenate([img for img, _ in output_images], axis=1)   
+        # cv2.imshow('Output', output_image)
+        #cv2.imshow('Output', box_image)
+        output_image = np.concatenate([color_image/255, box_image], axis=1)
+        new_frame_time = time.time() 
+        FPS = 1/(new_frame_time-previous_frame_time)
+        # print("FPS: ", FPS)
 
+        cv2.putText(output_image, "FPS: " + str(int(FPS)), (int(20), int(20)), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
+        cv2.imshow('Output', output_image)
+        previous_frame_time = new_frame_time
 
         # humr_result = hmr_traker.get_detections(color_image, 'frame_name', 0)
         # hmr_traker.visualize(color_image, humr_result)

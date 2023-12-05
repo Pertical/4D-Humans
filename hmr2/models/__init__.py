@@ -66,7 +66,7 @@ def convert_pkl(old_pkl, new_pkl):
         pickle.dump(loaded, outfile)
 
 DEFAULT_CHECKPOINT=f'{CACHE_DIR_4DHUMANS}/logs/train/multiruns/hmr2/0/checkpoints/epoch=35-step=1000000.ckpt'
-Poselift_CHECKPOINT='./logs/train/runs/pose_lift_trans_enc_dec/checkpoints/last.ckpt'
+Poselift_CHECKPOINT='./logs/train/runs/pose_lift_trans_enc_dec/checkpoints/epoch=11-step=590000.ckpt'
 
 def load_hmr2(checkpoint_path=DEFAULT_CHECKPOINT):
     from pathlib import Path
