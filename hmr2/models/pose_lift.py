@@ -183,14 +183,29 @@ class PoseLift(pl.LightningModule):
         keypoints_2d_25joint = batch['input_keypoints_2d']  # selected points [4, 25, 3]
         batch_size = keypoints_2d_25joint.shape[0]
 
-        if self.cfg.MODEL.BACKBONE.TYPE == 'fc_25joint':
-             keypoints_2d_17joint = keypoints_2d_25joint
-        else:
-            keypoints_2d_17joint = convet_25joint_to_17joint(keypoints_2d_25joint)
-        if self.cfg.MODEL.BACKBONE.TYPE == 'fcTransformer':
-            keypoints_2d_flatten = keypoints_2d_17joint[:, :, :2].reshape(batch_size, -1)
-        else:
-            keypoints_2d_flatten = keypoints_2d_17joint[:, :, :2].reshape(batch_size, -1)
+        # if self.cfg.MODEL.BACKBONE.TYPE == 'fc_25joint':
+        #      keypoints_2d_17joint = keypoints_2d_25joint
+        # else:
+        #     keypoints_2d_17joint = convet_25joint_to_17joint(keypoints_2d_25joint)
+        # if self.cfg.MODEL.BACKBONE.TYPE == 'fcTransformer':
+        #     keypoints_2d_flatten = keypoints_2d_17joint[:, :, :2].reshape(batch_size, -1)
+        # else:
+        #     keypoints_2d_flatten = keypoints_2d_17joint[:, :, :2].reshape(batch_size, -1)
+
+        # if self.cfg.MODEL.BACKBONE.TYPE == 'fc_25joint':
+        #      keypoints_2d_17joint = keypoints_2d_25joint
+        # else:
+        #     keypoints_2d_17joint = keypoints_2d_25joint
+        # if self.cfg.MODEL.BACKBONE.TYPE == 'fcTransformer':
+        #     keypoints_2d_flatten = keypoints_2d_17joint[:, :, :2].reshape(batch_size, -1)
+        # else:
+        #     keypoints_2d_flatten = keypoints_2d_17joint[:, :, :2].reshape(batch_size, -1)
+
+        keypoints_2d_flatten = keypoints_2d_25joint
+        
+
+
+        
         conditioning_feats = self.joint2d_encode(keypoints_2d_flatten) 
         # print("conditioning_feats.shape: ", conditioning_feats.shape)           # [4, 17, 3]
         # print("keypoints_2d.shape: ", keypoints_2d.shape)                           # [4, 1280]
