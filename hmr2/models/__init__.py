@@ -1,5 +1,6 @@
 from .smpl_wrapper import SMPL
 from .hmr2 import HMR2
+from .pose_lift import PoseLift
 from .discriminator import Discriminator
 
 from ..utils.download import cache_url
@@ -65,6 +66,8 @@ def convert_pkl(old_pkl, new_pkl):
         pickle.dump(loaded, outfile)
 
 DEFAULT_CHECKPOINT=f'{CACHE_DIR_4DHUMANS}/logs/train/multiruns/hmr2/0/checkpoints/epoch=35-step=1000000.ckpt'
+Poselift_CHECKPOINT=f'{CACHE_DIR_4DHUMANS}/logs/train/multiruns/hmr2/0/checkpoints/wenbo_last.ckpt'
+
 def load_hmr2(checkpoint_path=DEFAULT_CHECKPOINT):
     from pathlib import Path
     from ..configs import get_config
@@ -82,4 +85,23 @@ def load_hmr2(checkpoint_path=DEFAULT_CHECKPOINT):
     check_smpl_exists()
 
     model = HMR2.load_from_checkpoint(checkpoint_path, strict=False, cfg=model_cfg)
+    return model, model_cfg
+
+def load_poselift(checkpoint_path=Poselift_CHECKPOINT):
+    from pathlib import Path
+    from ..configs import get_config
+    model_cfg = str(Path(checkpoint_path).parent.parent / 'model_config.yaml')
+    model_cfg = get_config(model_cfg, update_cachedir=True)
+
+    # Override some config values, to crop bbox correctly
+    if (model_cfg.MODEL.BACKBONE.TYPE == 'vit') and ('BBOX_SHAPE' not in model_cfg.MODEL):
+        model_cfg.defrost()
+        assert model_cfg.MODEL.IMAGE_SIZE == 256, f"MODEL.IMAGE_SIZE ({model_cfg.MODEL.IMAGE_SIZE}) should be 256 for ViT backbone"
+        model_cfg.MODEL.BBOX_SHAPE = [192,256]
+        model_cfg.freeze()
+
+    # Ensure SMPL model exists
+    check_smpl_exists()
+
+    model = PoseLift.load_from_checkpoint(checkpoint_path, strict=False, cfg=model_cfg)
     return model, model_cfg
