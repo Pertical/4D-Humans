@@ -29,8 +29,8 @@ from phalp.configs.base import CACHE_DIR
 from hmr2.utils.renderer import Renderer, cam_crop_to_full
 
 from hmr2.datasets.utils import expand_bbox_to_aspect_ratio
-from hmr2.datasets.vitdet_dataset import ViTDetDataset, DEFAULT_MEAN, DEFAULT_STD
-import mediapipe as mp
+#from hmr2.datasets.vitdet_dataset import ViTDetDataset, DEFAULT_MEAN, DEFAULT_STD
+# import mediapipe as mp
 import neural_renderer as nr
 from ultralytics import YOLO
 
@@ -105,7 +105,7 @@ def main():
 
         color_image = np.asanyarray(color_frame.get_data())
 
-        yolo_out = YOLO_model(color_image, stream=True, verbose=False, imgsz=640, conf=0.3,classes=0,save=False,half=True)
+        yolo_out = YOLO_model(color_image, stream=True, verbose=False)
 
         box_image = color_image.copy()
 
@@ -171,9 +171,6 @@ def main():
                     # print("Combined Keypoints:", combined_keypoints.shape) (1,17,3)
                     
                     
-                    
-                    
-                    
                     # center_x = 
                     
                     # # ------------------img--------------------
@@ -200,43 +197,40 @@ def main():
                     box_center = (x2-x1)//2
                     
                     
-                    
                     test_dict = {
                     'input_keypoints_2d': combined_keypoints}
                     # print(type(item))
                     # boxes = boxes.data.cpu().numpy()
                     # keypoints = keypoints.data.cpu().numpy()
                     # print(boxes)
-                    
-                    
-                    
+                
                     
                     # ==========================================================================================================
-                    # cv2.putText(box_image, class_name,
-                    #             (int(max_prob_box[0]), int(max_prob_box[1])), cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 1)
+                    cv2.putText(box_image, class_name,
+                                (int(max_prob_box[0]), int(max_prob_box[1])), cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 1)
                         
-                    # cv2.rectangle(box_image, (int(max_prob_box[0]), int(max_prob_box[1])), (int(max_prob_box[2]), int(max_prob_box[3])), (0, 255, 0), 1)
+                    cv2.rectangle(box_image, (int(max_prob_box[0]), int(max_prob_box[1])), (int(max_prob_box[2]), int(max_prob_box[3])), (0, 255, 0), 1)
                     
-                    # if keypoints is not None:
-                    #     for keypoint in keypoints:
-                    #         for point in keypoint:
-                                # x, y, prob = point[0], point[1], point[2]  # Extract x, y, and prob from keypoint
-                                # x, y = int(x), int(y)  # Convert to integers
-                                # print(x, y, prob)
+                    if keypoints is not None:
+                        for keypoint in keypoints:
+                            for point in keypoint:
+                                x, y, prob = point[0], point[1], point[2]  # Extract x, y, and prob from keypoint
+                                x, y = int(x), int(y)  # Convert to integers
+                                print(x, y, prob)
 
-                                # if max_prob_box[0] <= x <= max_prob_box[2] and max_prob_box[1] <= y <= max_prob_box[3]:
-                                #     # Draw the keypoint only if it is within the bounding box
-                                #     #pose_keypoints_2d = np.concatenate((pose_keypoints_2d, [[x, y]]), axis=0)
-                                #     cv2.circle(box_image, (x, y), 2, (0, 0, 255), -1)
+                                if max_prob_box[0] <= x <= max_prob_box[2] and max_prob_box[1] <= y <= max_prob_box[3]:
+                                    # Draw the keypoint only if it is within the bounding box
+                                    #pose_keypoints_2d = np.concatenate((pose_keypoints_2d, [[x, y]]), axis=0)
+                                    cv2.circle(box_image, (x, y), 2, (0, 0, 255), -1)
 
-                                # print(keypoints.shape)
-                                # print(keypoints)
-                                #17 points
+                                print(keypoints.shape)
+                                print(keypoints)
+                                # 17 points
                                 
-                                # pose_keypoints_2d = keypoints[0, :, :2]
-                                # print(pose_keypoints_2d)
-                                # print(pose_keypoints_2d.shape)
-                                # print(pose_keypoints_2d)
+                                pose_keypoints_2d = keypoints[0, :, :2]
+                                print(pose_keypoints_2d)
+                                print(pose_keypoints_2d.shape)
+                                print(pose_keypoints_2d)
                     # ===========================================================================================================
                 else:
                     continue
