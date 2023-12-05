@@ -17,9 +17,10 @@ yolo_detector.predict(classes=0)
 
 LIGHT_BLUE=(0.65098039,  0.74117647,  0.85882353)
 
+
 def main():
     parser = argparse.ArgumentParser(description='HMR2 demo code')
-    parser.add_argument('--checkpoint', type=str, default=DEFAULT_CHECKPOINT, help='Path to pretrained model checkpoint')
+    parser.add_argument('--checkpoint', type=str, default='./logs/train/runs/pose_lift_trans_enc_dec/checkpoints/epoch=11-step=590000.ckpt', help='Path to pretrained model checkpoint')
     parser.add_argument('--checkpoint_pose', type=str, default=Poselift_CHECKPOINT, help='Path to pretrained model checkpoint')
     parser.add_argument('--img_folder', type=str, default='example_data/images', help='Folder with input images')
     parser.add_argument('--out_folder', type=str, default='demo_out', help='Output folder to save rendered results')
@@ -35,7 +36,7 @@ def main():
     # Download and load checkpoints
     download_models(CACHE_DIR_4DHUMANS)
     # model, model_cfg = load_hmr2(args.checkpoint)
-    model, model_cfg = load_poselift(args.checkpoint_pose)
+    model, model_cfg = load_poselift(args.checkpoint)
 
     # Setup HMR2.0 model
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
