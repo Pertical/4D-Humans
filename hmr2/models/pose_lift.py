@@ -15,11 +15,7 @@ from . import SMPL
 
 import torch.nn as nn
 
-<<<<<<< HEAD
-from hmr2.models.backbones.fcresnet import FCResNet
-=======
-#from hmr2.models.backbones.fcresnet import FCResNet
->>>>>>> origin/main
+# from hmr2.models.backbones.fcresnet import FCResNet
 from hmr2.models.components.pose_transformer import Transformer, MyUnsqueeze
 
 log = get_pylogger(__name__)
@@ -54,15 +50,11 @@ class PoseLift(pl.LightningModule):
                     nn.BatchNorm1d(cfg.MODEL.BACKBONE.output_dim),
                     nn.ReLU(inplace=True)
                 )
-<<<<<<< HEAD
-        elif cfg.MODEL.BACKBONE.TYPE == 'fcresnet':
-            ## ProHMR
-            self.joint2d_encode = FCResNet(in_channels=cfg.MODEL.BACKBONE.input_dim, 
-                                           hidden_channels=cfg.MODEL.BACKBONE.hidden_dim, 
-                                           out_channels=cfg.MODEL.BACKBONE.output_dim)
-=======
-
->>>>>>> origin/main
+        # elif cfg.MODEL.BACKBONE.TYPE == 'fcresnet':
+        #     ## ProHMR
+        #     self.joint2d_encode = FCResNet(in_channels=cfg.MODEL.BACKBONE.input_dim, 
+        #                                    hidden_channels=cfg.MODEL.BACKBONE.hidden_dim, 
+        #                                    out_channels=cfg.MODEL.BACKBONE.output_dim)
         elif cfg.MODEL.BACKBONE.TYPE == 'fcTransformer':
             ## transformer encoder
            
@@ -110,20 +102,9 @@ class PoseLift(pl.LightningModule):
             self.discriminator = Discriminator()
 
         # Define loss functions
-<<<<<<< HEAD
         self.keypoint_3d_loss = Keypoint3DLoss(loss_type='l1', reduction=cfg.TRAIN.LOSS_REDUCTION)
         self.keypoint_2d_loss = Keypoint2DLoss(loss_type='l1', reduction=cfg.TRAIN.LOSS_REDUCTION)
         self.smpl_parameter_loss = ParameterLoss(reduction=cfg.TRAIN.LOSS_REDUCTION)
-=======
-        # self.keypoint_3d_loss = Keypoint3DLoss(loss_type='l1', reduction=cfg.TRAIN.LOSS_REDUCTION)
-        # self.keypoint_2d_loss = Keypoint2DLoss(loss_type='l1', reduction=cfg.TRAIN.LOSS_REDUCTION)
-        # self.smpl_parameter_loss = ParameterLoss(reduction=cfg.TRAIN.LOSS_REDUCTION)
-
-        self.keypoint_3d_loss = Keypoint3DLoss(loss_type='l1')
-        self.keypoint_2d_loss = Keypoint2DLoss(loss_type='l1')
-        self.smpl_parameter_loss = ParameterLoss()
-
->>>>>>> origin/main
 
         # Instantiate SMPL model
         smpl_cfg = {k.lower(): v for k,v in dict(cfg.SMPL).items()}
@@ -194,13 +175,7 @@ class PoseLift(pl.LightningModule):
         # https://github.com/nkolot/ProHMR/blob/master/prohmr/models/backbones/fcresnet.py#L52C16-L52C16
 
         # keypoints_2d = batch['keypoints_2d']      # gt [4, 44, 3]
-<<<<<<< HEAD
         keypoints_2d_25joint = batch['input_keypoints_2d']  # selected points [4, 25, 3]
-=======
-        #print("\n--------------------------------", batch, "----------------------------\n")
-        keypoints_2d_25joint = batch['input_keypoints_2d']  # selected points [4, 25, 3]
-        # keypoints_2d_25joint = batch['img']
->>>>>>> origin/main
         batch_size = keypoints_2d_25joint.shape[0]
 
         if self.cfg.MODEL.BACKBONE.TYPE == 'fc_25joint':
