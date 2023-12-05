@@ -111,7 +111,10 @@ def main():
 
         box_image = color_image.copy()
 
-        output_test = model(color_image)
+
+        
+
+        output_test = model(test_dict)
 
 
         #1. Yolo outputs 2d pose, bbox
