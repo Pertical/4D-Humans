@@ -15,7 +15,7 @@ from hmr2.utils import recursive_to
 from hmr2.datasets.vitdet_dataset import ViTDetDataset, DEFAULT_MEAN, DEFAULT_STD
 from hmr2.utils.renderer import Renderer, cam_crop_to_full
 
-from hmr2.models import load_pose_lift
+from hmr2.models import load_poselift
 from hmr2.utils.render_openpose import render_openpose
 
 from hmr2.utils.geometry import aa_to_rotmat, perspective_projection, rotmat_to_angle_axis
@@ -33,7 +33,7 @@ def main():
     parser = argparse.ArgumentParser(description='HMR2 demo code')
     # parser.add_argument('--checkpoint', type=str, default='logs/train/runs/pose_lift_2DJointAsInput_2023-11-26_09-53-45/checkpoints/last.ckpt', help='Path to pretrained model checkpoint')
     # parser.add_argument('--checkpoint', type=str, default='logs/train/runs/pose_lift_fcresnet_Nov28/checkpoints/last.ckpt', help='Path to pretrained model checkpoint')
-    parser.add_argument('--checkpoint', type=str, default='logs/train/runs/pose_lift_fc_Nov28/checkpoints/last.ckpt', help='Path to pretrained model checkpoint')
+    parser.add_argument('--checkpoint', type=str, default='logs/train/runs/pose_lift_trans_enc_dec/checkpoints/last.ckpt', help='Path to pretrained model checkpoint')
     # parser.add_argument('--checkpoint', type=str, default='logs/train/runs/pose_lift_fc_Nov28/checkpoints/epoch=25-step=470000.ckpt', help='Path to pretrained model checkpoint')
    
     # parser.add_argument('--img_folder', type=str, default='example_data/test_data/in-the-wild', help='Folder with input images')
@@ -88,7 +88,7 @@ def main():
     # download_models(CACHE_DIR_4DHUMANS)
     # model, model_cfg = load_hmr2(args.checkpoint)
 
-    model, model_cfg = load_pose_lift(args.checkpoint)
+    model, model_cfg = load_poselift(args.checkpoint)
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     model = model.to(device)
@@ -160,7 +160,9 @@ def main():
 
             pred_cam = out['pred_cam']
             box_center = batch["box_center"].float()
+            # print("kkkkkkkkkkkkk\n", box_center, "lllllllllllllll]\n")
             box_size = batch["box_size"].float()
+            # print("kkkkkkkkkkkkk\n", box_size, "lllllllllllllll]\n")
             img_size = batch["img_size"].float()
             scaled_focal_length = model_cfg.EXTRA.FOCAL_LENGTH / model_cfg.MODEL.IMAGE_SIZE * img_size.max()
             pred_cam_t_full = cam_crop_to_full(pred_cam, box_center, box_size, img_size, scaled_focal_length).detach().cpu().numpy()

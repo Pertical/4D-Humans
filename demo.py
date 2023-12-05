@@ -13,17 +13,17 @@ from hmr2.utils.renderer import Renderer, cam_crop_to_full
 from ultralytics import YOLO
 
 yolo_detector = YOLO("yolov8n.pt")
-yolo_detector.predict(classes=0)
+# yolo_detector.predict(classes=0)
 
 LIGHT_BLUE=(0.65098039,  0.74117647,  0.85882353)
 
 
 def main():
     parser = argparse.ArgumentParser(description='HMR2 demo code')
-    parser.add_argument('--checkpoint', type=str, default='./logs/train/runs/pose_lift_trans_enc_dec/checkpoints/epoch=11-step=590000.ckpt', help='Path to pretrained model checkpoint')
+    parser.add_argument('--checkpoint', type=str, default=DEFAULT_CHECKPOINT, help='Path to pretrained model checkpoint')
     parser.add_argument('--checkpoint_pose', type=str, default=Poselift_CHECKPOINT, help='Path to pretrained model checkpoint')
     parser.add_argument('--img_folder', type=str, default='example_data/images', help='Folder with input images')
-    parser.add_argument('--out_folder', type=str, default='demo_out', help='Output folder to save rendered results')
+    parser.add_argument('--out_folder', type=str, default='demo_out_p', help='Output folder to save rendered results')
     parser.add_argument('--out_folder_pose', type=str, default='demo_out_pose', help='Output folder to save rendered results for poselift')
     parser.add_argument('--side_view', dest='side_view', action='store_true', default=False, help='If set, render side view also')
     parser.add_argument('--top_view', dest='top_view', action='store_true', default=False, help='If set, render top view also')
@@ -36,7 +36,7 @@ def main():
     # Download and load checkpoints
     download_models(CACHE_DIR_4DHUMANS)
     # model, model_cfg = load_hmr2(args.checkpoint)
-    model, model_cfg = load_poselift(args.checkpoint)
+    model, model_cfg = load_poselift(args.checkpoint_pose)
 
     # Setup HMR2.0 model
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -61,12 +61,15 @@ def main():
 
     # Make output directory if it does not exist
     os.makedirs(args.out_folder, exist_ok=True)
+    # os.makedirs(args.out_folder_pose, exist_ok=True)
 
     # Iterate over all images in folder
     for img_path in Path(args.img_folder).glob('*.jpg'):
         img_cv2 = cv2.imread(str(img_path))
         det_out = yolo_detector.predict(img_cv2, imgsz=640, conf=0.3,show=False,classes=0,save=False,half=True)
-        boxes=np.asarray([result.boxes.xyxy.cpu().numpy() for result in det_out]).reshape(-1,4)# in the form of [x1,y1,x2,y2]
+        boxes=np.asarray([result.boxes.xyxy.cpu().numpy() for result in det_out]).reshape(-1,4)# in the form of [x1,y1,x2,y2]\
+        
+        # print("box: ", boxes.shape, "01010101010101010110")
 
         # Detect humans in image
         # det_out = detector(img_cv2)
@@ -77,20 +80,27 @@ def main():
 
         # Run HMR2.0 on all detected humans
         dataset = ViTDetDataset(model_cfg, img_cv2, boxes)
+        # print("\n\n", dataset, "\n\n")
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=False, num_workers=0)
-
+        
+        # print("\n\n---", dataloader, "---\n\n")
+        
         all_verts = []
         all_cam_t = []
         
         for batch in dataloader:
             batch = recursive_to(batch, device)
+            # print("\n\n---", batch, "---\n\n")
+            # print("\n", batch['input_keypoints_2d'].shape)
             with torch.no_grad():
                 out = model(batch)
 
             pred_cam = out['pred_cam']
             box_center = batch["box_center"].float()
             box_size = batch["box_size"].float()
+            # print("kkkkkkkkkkkkk\n", box_size, "lllllllllllllll]\n")
             img_size = batch["img_size"].float()
+            print("lllllllllllll\n", img_size, "mmmmmmmmmmmmmm\n")
             scaled_focal_length = model_cfg.EXTRA.FOCAL_LENGTH / model_cfg.MODEL.IMAGE_SIZE * img_size.max()
             pred_cam_t_full = cam_crop_to_full(pred_cam, box_center, box_size, img_size, scaled_focal_length).detach().cpu().numpy()
 

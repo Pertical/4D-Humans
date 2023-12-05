@@ -66,7 +66,7 @@ def convert_pkl(old_pkl, new_pkl):
         pickle.dump(loaded, outfile)
 
 DEFAULT_CHECKPOINT=f'{CACHE_DIR_4DHUMANS}/logs/train/multiruns/hmr2/0/checkpoints/epoch=35-step=1000000.ckpt'
-Poselift_CHECKPOINT=f'{CACHE_DIR_4DHUMANS}/logs/train/multiruns/hmr2/0/checkpoints/wenbo_last.ckpt'
+Poselift_CHECKPOINT='./logs/train/runs/pose_lift_trans_enc_dec/checkpoints/last.ckpt'
 
 def load_hmr2(checkpoint_path=DEFAULT_CHECKPOINT):
     from pathlib import Path
@@ -90,7 +90,7 @@ def load_hmr2(checkpoint_path=DEFAULT_CHECKPOINT):
 def load_poselift(checkpoint_path=Poselift_CHECKPOINT):
     from pathlib import Path
     from ..configs import get_config
-    model_cfg = str(Path(checkpoint_path).parent.parent / 'model_config_wenbo.yaml')
+    model_cfg = str(Path(checkpoint_path).parent.parent / 'model_config.yaml')
     # print(str(Path(checkpoint_path).parent.parent), "11111111111111111111111111111111111")
     model_cfg = get_config(model_cfg, update_cachedir=True)
 

@@ -105,12 +105,12 @@ class PoseLift(pl.LightningModule):
         # self.keypoint_3d_loss = Keypoint3DLoss(loss_type='l1', reduction=cfg.TRAIN.LOSS_REDUCTION)
         # self.keypoint_2d_loss = Keypoint2DLoss(loss_type='l1', reduction=cfg.TRAIN.LOSS_REDUCTION)
         # self.smpl_parameter_loss = ParameterLoss(reduction=cfg.TRAIN.LOSS_REDUCTION)
-
+        
+        
         self.keypoint_3d_loss = Keypoint3DLoss(loss_type='l1')
         self.keypoint_2d_loss = Keypoint2DLoss(loss_type='l1')
         self.smpl_parameter_loss = ParameterLoss()
-
-
+        
         # Instantiate SMPL model
         smpl_cfg = {k.lower(): v for k,v in dict(cfg.SMPL).items()}
         self.smpl = SMPL(**smpl_cfg)
@@ -180,13 +180,21 @@ class PoseLift(pl.LightningModule):
         # https://github.com/nkolot/ProHMR/blob/master/prohmr/models/backbones/fcresnet.py#L52C16-L52C16
 
         # keypoints_2d = batch['keypoints_2d']      # gt [4, 44, 3]
+<<<<<<< Updated upstream
         keypoints_2d_25joint = batch['input_keypoints_2d']  # selected points [4, 25, 3]
         batch_size = keypoints_2d_25joint.shape[0]
+=======
+        
+        # keypoints_2d_25joint = batch['input_keypoints_2d']  # selected points [4, 25, 3]
+        # batch_size = keypoints_2d_25joint.shape[0]
+        # # print("0987654321\n", batch_size, "1234567890\n")
+>>>>>>> Stashed changes
 
         # if self.cfg.MODEL.BACKBONE.TYPE == 'fc_25joint':
         #      keypoints_2d_17joint = keypoints_2d_25joint
         # else:
         #     keypoints_2d_17joint = convet_25joint_to_17joint(keypoints_2d_25joint)
+<<<<<<< Updated upstream
         # if self.cfg.MODEL.BACKBONE.TYPE == 'fcTransformer':
         #     keypoints_2d_flatten = keypoints_2d_17joint[:, :, :2].reshape(batch_size, -1)
         # else:
@@ -206,6 +214,25 @@ class PoseLift(pl.LightningModule):
 
 
         
+=======
+        #     # print("\naisjhdoaisdjoa", keypoints_2d_17joint, "asdjkaosidkj\n")
+        #     # print("\n10000000000", keypoints_2d_17joint.shape, "01111111111111\n")
+        
+        
+        # -----------------for poselift realsense-----------------------
+        keypoints_2d_17joint = batch['input_keypoints_2d']
+        batch_size = keypoints_2d_17joint.size(0)
+        # ----------------------------------------------------
+        
+        
+        if self.cfg.MODEL.BACKBONE.TYPE == 'fcTransformer':
+            keypoints_2d_flatten = keypoints_2d_17joint[:, :, :2].reshape(batch_size, -1)
+            # print("\n101010101", keypoints_2d_flatten.shape, "18181818181\n")
+            # print("\n232919192", keypoints_2d_flatten, "23232323232\n")
+            # print("098asjdlkajshdoi\n", keypoints_2d_flatten.type, "dasjhdajksd\n")
+        else:
+            keypoints_2d_flatten = keypoints_2d_17joint[:, :, :2].reshape(batch_size, -1)
+>>>>>>> Stashed changes
         conditioning_feats = self.joint2d_encode(keypoints_2d_flatten) 
         # print("conditioning_feats.shape: ", conditioning_feats.shape)           # [4, 17, 3]
         # print("keypoints_2d.shape: ", keypoints_2d.shape)                           # [4, 1280]

@@ -42,6 +42,7 @@ class ViTDetDataset(torch.utils.data.Dataset):
         assert train == False, "ViTDetDataset is only for inference"
         self.train = train
         self.img_size = cfg.MODEL.IMAGE_SIZE
+        # print(self.img_size, "------------===============---------=")
         self.mean = 255. * np.array(self.cfg.MODEL.IMAGE_MEAN)
         self.std = 255. * np.array(self.cfg.MODEL.IMAGE_STD)
 
@@ -151,6 +152,7 @@ class ViTDetDataset(torch.utils.data.Dataset):
             'personid': int(self.personid[idx]),
         }
         item['box_center'] = self.center[idx].copy()
+        # print("kkkkkkkkkkkkk\n", self.center[idx].copy(), "lllllllllllllll]\n")
         item['box_size'] = bbox_size
         item['img_size'] = 1.0 * np.array([cvimg.shape[1], cvimg.shape[0]])
         return item
