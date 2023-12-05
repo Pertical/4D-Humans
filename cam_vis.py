@@ -31,6 +31,9 @@ from hmr2.utils.renderer import Renderer, cam_crop_to_full
 # from hmr2.datasets.utils import expand_bbox_to_aspect_ratio
 #from hmr2.datasets.vitdet_dataset import ViTDetDataset, DEFAULT_MEAN, DEFAULT_STD
 
+
+from hmr2.models import load_poselift
+
 from ultralytics import YOLO
 
 
@@ -41,7 +44,17 @@ YOLO_model.predict(classes=0)
 warnings.filterwarnings('ignore')
 
 log = get_pylogger(__name__)
+#/home/peter/Desktop/4D-Humans/logs/train/runs/pose_lift_trans_enc_dec/checkpoints/epoch=11-step=590000.ckpt
 
+model_dir = "./logs/train/runs/pose_lift_trans_enc_dec/checkpoints/epoch=11-step=590000.ckpt"
+
+model = pose_lift.PoseLift.load_from_checkpoint(model_dir)
+
+# model, model_cfg = load_poselift()
+
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+model = model.to(device)
+model.eval()
 
 
 
@@ -97,6 +110,8 @@ def main():
         yolo_out = YOLO_model(color_image, stream=True, verbose=False)
 
         box_image = color_image.copy()
+
+        output_test = model(color_image)
 
 
         #1. Yolo outputs 2d pose, bbox
