@@ -176,7 +176,9 @@ class PoseLift(pl.LightningModule):
         # https://github.com/nkolot/ProHMR/blob/master/prohmr/models/backbones/fcresnet.py#L52C16-L52C16
 
         # keypoints_2d = batch['keypoints_2d']      # gt [4, 44, 3]
+        print("\n--------------------------------", batch, "----------------------------\n")
         keypoints_2d_25joint = batch['input_keypoints_2d']  # selected points [4, 25, 3]
+        # keypoints_2d_25joint = batch['img']
         batch_size = keypoints_2d_25joint.shape[0]
 
         if self.cfg.MODEL.BACKBONE.TYPE == 'fc_25joint':
