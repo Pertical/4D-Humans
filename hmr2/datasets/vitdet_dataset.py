@@ -6,6 +6,19 @@ from skimage.filters import gaussian
 from yacs.config import CfgNode
 import torch
 
+try:
+    import mediapipe as mp
+except:
+    raise("Please install mediapipe to predict rough segmentation masks")
+
+from mediapipe import solutions
+from mediapipe.framework.formats import landmark_pb2
+
+from hmr2.utils.render_openpose import render_openpose
+
+
+import cv2
+
 from .utils import (convert_cvimg_to_tensor,
                     expand_to_aspect_ratio,
                     generate_image_patch_cv2)
@@ -37,6 +50,13 @@ class ViTDetDataset(torch.utils.data.Dataset):
         self.center = (boxes[:, 2:4] + boxes[:, 0:2]) / 2.0
         self.scale = (boxes[:, 2:4] - boxes[:, 0:2]) / 200.0
         self.personid = np.arange(len(boxes), dtype=np.int32)
+
+        # Initialize mediapipe
+        self.pose_mp = mp.solutions.pose.Pose(
+                    static_image_mode=True,
+                    model_complexity=2,
+                    enable_segmentation=True,
+                    min_detection_confidence=0.5)
 
     def __len__(self) -> int:
         return len(self.personid)
@@ -72,6 +92,53 @@ class ViTDetDataset(torch.utils.data.Dataset):
                                                     False, 1.0, 0,
                                                     border_mode=cv2.BORDER_CONSTANT)
         img_patch_cv = img_patch_cv[:, :, ::-1]
+        
+        results_mediapipe = self.pose_mp.process(img_patch_cv.astype(np.uint8))
+        # pose_landmarks', 'pose_world_landmarks', 'segmentation_mask
+        if results_mediapipe.pose_landmarks is None:
+            item = {
+                    'input_keypoints_2d': -1,
+                }
+            return item
+        
+        pose_landmarks = results_mediapipe.pose_landmarks.landmark
+        # pose_world_landmarks = results_mediapipe.pose_world_landmarks
+        # https://github.com/googlesamples/mediapipe/blob/main/examples/pose_landmarker/python/%5BMediaPipe_Python_Tasks%5D_Pose_Landmarker.ipynb
+
+        # print(pose_landmarks)
+        h, w, c = img_patch_cv.shape
+        # image_2djoint = np.copy(img_patch_cv)
+        keypoints_2d_list = []
+        for point in pose_landmarks:
+            x = point.x * w
+            y = point.y * h
+            z = point.visibility
+            # cv2.circle(image_2djoint, (int(x), int(y)), 5, (0, 255, 0), -1)
+            keypoints_2d_list.append([x, y, z])
+        keypoints_2d_np = np.asarray(keypoints_2d_list).astype(np.float32)
+        # print(keypoints_2d_np.shape)
+        # # print(keypoint_pos)
+        # vis_path = "./demo_out/test_mediapipe.jpg"
+        # cv2.imwrite(vis_path, image_2djoint[:, :, ::-1])
+        # print(vis_path)
+
+       
+        keypoints_2d_openpose_order = self.mediapipe_to_openpose(keypoints_2d_np)
+        # input_keypoints_2d_img = render_openpose(img_patch_cv.copy(), keypoints_2d_openpose_order)
+        # vis_path = f"./demo_out/demo_input_keypoints_2d_img_{idx}.jpg"
+        # cv2.imwrite(vis_path, input_keypoints_2d_img[:, :, ::-1])
+        # print(vis_path)
+
+        # for n_jt in range(len(keypoints_2d)):
+        #     keypoints_2d[n_jt, 0:2] = trans_point2d(keypoints_2d[n_jt, 0:2], trans)
+        keypoints_2d_openpose_order[:, :-1] = keypoints_2d_openpose_order[:, :-1] / patch_width - 0.5
+        input_keypoints_2d = keypoints_2d_openpose_order
+
+         # set invalid joint as (0, 0, 0)
+        invalid_inds = input_keypoints_2d[:, -1] <= 0
+        input_keypoints_2d[invalid_inds] = input_keypoints_2d[invalid_inds] * 0
+        input_keypoints_2d = input_keypoints_2d.astype(np.float32)
+
         img_patch = convert_cvimg_to_tensor(img_patch_cv)
 
         # apply normalization
@@ -79,6 +146,7 @@ class ViTDetDataset(torch.utils.data.Dataset):
             img_patch[n_c, :, :] = (img_patch[n_c, :, :] - self.mean[n_c]) / self.std[n_c]
 
         item = {
+            'input_keypoints_2d': input_keypoints_2d,
             'img': img_patch,
             'personid': int(self.personid[idx]),
         }
@@ -86,3 +154,35 @@ class ViTDetDataset(torch.utils.data.Dataset):
         item['box_size'] = bbox_size
         item['img_size'] = 1.0 * np.array([cvimg.shape[1], cvimg.shape[0]])
         return item
+
+    def mediapipe_to_openpose(self, mediapipe_keypoints):
+        keypoints_2d_openpose_order = np.zeros((25, 3))
+        keypoints_2d_openpose_order[0] = mediapipe_keypoints[0]
+        # keypoints_2d_openpose_order[1, :-1] = (mediapipe_keypoints[11, :-1] + mediapipe_keypoints[12, :-1]) * 0.5
+        # keypoints_2d_openpose_order[1, -1] = mediapipe_keypoints[11, -1] 
+        keypoints_2d_openpose_order[2] = mediapipe_keypoints[12]
+        keypoints_2d_openpose_order[3] = mediapipe_keypoints[14]
+        keypoints_2d_openpose_order[4] = mediapipe_keypoints[16]
+        keypoints_2d_openpose_order[5] = mediapipe_keypoints[11]
+        keypoints_2d_openpose_order[6] = mediapipe_keypoints[13]
+        keypoints_2d_openpose_order[7] = mediapipe_keypoints[15]
+        # keypoints_2d_openpose_order[8, :-1] = (mediapipe_keypoints[24, :-1] + mediapipe_keypoints[23, :-1]) * 0.5
+        # keypoints_2d_openpose_order[8, -1] = mediapipe_keypoints[24, -1] 
+        keypoints_2d_openpose_order[9] = mediapipe_keypoints[24]
+        keypoints_2d_openpose_order[10] = mediapipe_keypoints[26]
+        keypoints_2d_openpose_order[11] = mediapipe_keypoints[28]
+        keypoints_2d_openpose_order[12] = mediapipe_keypoints[23]
+        keypoints_2d_openpose_order[13] = mediapipe_keypoints[25]
+        keypoints_2d_openpose_order[14] = mediapipe_keypoints[27]
+        keypoints_2d_openpose_order[15] = mediapipe_keypoints[4]
+        keypoints_2d_openpose_order[16] = mediapipe_keypoints[1]
+        keypoints_2d_openpose_order[17] = mediapipe_keypoints[8]
+        keypoints_2d_openpose_order[18] = mediapipe_keypoints[7]
+        # keypoints_2d_openpose_order[19] = mediapipe_keypoints[29]
+        # # keypoints_2d_openpose_order[20] = mediapipe_keypoints[29]
+        # keypoints_2d_openpose_order[21] = mediapipe_keypoints[31]
+        # keypoints_2d_openpose_order[22] = mediapipe_keypoints[30]
+        # # keypoints_2d_openpose_order[23] = mediapipe_keypoints[30]
+        # keypoints_2d_openpose_order[24] = mediapipe_keypoints[32]
+
+        return keypoints_2d_openpose_order

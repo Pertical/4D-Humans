@@ -23,6 +23,19 @@ def default(val, d):
         return val
     return d() if isfunction(d) else d
 
+class Reshape(nn.Module):
+    def __init__(self, *args):
+        super(Reshape, self).__init__()
+        self.shape = args
+    def forward(self, x):
+        return x.view((x.size(0),)+self.shape)
+    
+class MyUnsqueeze(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.unsqueeze_pos = dim
+    def forward(self, x):
+        return torch.unsqueeze(x,self.unsqueeze_pos)
 
 class PreNorm(nn.Module):
     def __init__(self, dim: int, fn: Callable, norm: str = "layer", norm_cond_dim: int = -1):
@@ -355,4 +368,6 @@ class TransformerDecoder(nn.Module):
 
         x = self.transformer(x, *args, context=context, context_list=context_list)
         return x
+
+
 
