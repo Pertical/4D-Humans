@@ -10,6 +10,8 @@ import cv2
 from .dataset import Dataset
 from .utils import get_example, expand_to_aspect_ratio
 from .smplh_prob_filter import poses_check_probable, load_amass_hist_smooth
+from hmr2.utils.render_openpose import render_openpose
+
 
 def expand(s):
     return os.path.expanduser(os.path.expandvars(s))
@@ -172,6 +174,8 @@ class ImageDataset(Dataset):
                                     }
 
         augm_config = self.cfg.DATASETS.CONFIG
+        orig_keypoints_2d = keypoints_2d.copy()
+
         # Crop image and (possibly) perform data augmentation
         img_patch, keypoints_2d, keypoints_3d, smpl_params, has_smpl_params, img_size = get_example(image_file,
                                                                                                     center_x, center_y,
@@ -182,11 +186,44 @@ class ImageDataset(Dataset):
                                                                                                     self.img_size, self.img_size,
                                                                                                     self.mean, self.std, self.train, augm_config)
 
+        # keypoints_2d.shape (44, 3)
+        # build 2d keypoint as input
+        keypoint_matches = [(1, 12), (2, 8), (3, 7), (4, 6), (5, 9), (6, 10), (7, 11), (8, 14), (9, 2), (10, 1), (11, 0), (12, 3), (13, 4), (14, 5)]
+        input_keypoints_2d = keypoints_2d[:25]
+        extra_keypoints = keypoints_2d[-19:]
+        for pair in keypoint_matches:
+            if extra_keypoints[pair[1], -1] > 0 and input_keypoints_2d[pair[0], -1] == 0:
+                input_keypoints_2d[pair[0], :] = extra_keypoints[pair[1], :]
+            
+        # set invalid joint as (0, 0, 0)
+        invalid_inds = input_keypoints_2d[:, -1] <= 0
+        input_keypoints_2d[invalid_inds] = input_keypoints_2d[invalid_inds] * 0
+
+        # debug..., because we found the 1 joint in the tensorboard is 0, but need to check the 3dpw training?
+        # we should select most common joints as input and retrain
+        input_keypoints_2d[1] = input_keypoints_2d[1] * 0
+
+        # input_keypoints_2d_ori = np.zeros_like(input_keypoints_2d)
+        # input_keypoints_2d_ori[:, :-1] = 256 * (input_keypoints_2d[:, :-1] + 0.5)
+        # input_keypoints_2d_ori[:, -1] = input_keypoints_2d[:, -1]
+
+        # print(type(img_patch))
+        # img_patch_np = np.transpose(img_patch, (1,2,0))
+        # print(img_patch_np.shape)
+        # img_patch_np = img_patch_np * np.array([0.229, 0.224, 0.225]).astype(np.float32)
+        # img_patch_np = img_patch_np + np.array([0.485, 0.456, 0.406]).astype(np.float32)
+        # input_keypoints_2d_img = render_openpose(255*img_patch_np.copy(), input_keypoints_2d_ori)
+        # vis_path = f"./demo_out/input_keypoints_2d_img_{idx}.jpg"
+        # cv2.imwrite(vis_path, input_keypoints_2d_img[:, :, ::-1])
+        # print(vis_path)
+        # print("-" * 50)
+
         item = {}
         # These are the keypoints in the original image coordinates (before cropping)
-        orig_keypoints_2d = self.keypoints_2d[idx].copy()
+        # orig_keypoints_2d = self.keypoints_2d[idx].copy()
 
         item['img'] = img_patch
+        item['input_keypoints_2d'] = input_keypoints_2d.astype(np.float32)
         item['keypoints_2d'] = keypoints_2d.astype(np.float32)
         item['keypoints_3d'] = keypoints_3d.astype(np.float32)
         item['orig_keypoints_2d'] = orig_keypoints_2d
@@ -432,12 +469,48 @@ class ImageDataset(Dataset):
         if (mask_patch < 0.5).all():
             mask_patch = np.ones_like(mask_patch)
 
-        item = {}
+        # keypoints_2d.shape (44, 3)
+        # build 2d keypoint as input
+        keypoint_matches = [(1, 12), (2, 8), (3, 7), (4, 6), (5, 9), (6, 10), (7, 11), (8, 14), (9, 2), (10, 1), (11, 0), (12, 3), (13, 4), (14, 5)]
+        input_keypoints_2d = keypoints_2d[:25]
+        extra_keypoints = keypoints_2d[-19:]
+        for pair in keypoint_matches:
+            if extra_keypoints[pair[1], -1] > 0 and input_keypoints_2d[pair[0], -1] == 0:
+                input_keypoints_2d[pair[0], :] = extra_keypoints[pair[1], :]
+            
+        # set invalid joint as (0, 0, 0)
+        invalid_inds = input_keypoints_2d[:, -1] <= 0
+        input_keypoints_2d[invalid_inds] = input_keypoints_2d[invalid_inds] * 0
 
+        ## todo.. 
+        # # all 17 joints
+        # if sum(invalid_inds) >= 10:
+        #     continue
+
+        # # debug..., because we found the 1 joint in the tensorboard is 0, but need to check the 3dpw training? not include the 3pdw
+        # # we should select most common joints as input and retrain
+        # input_keypoints_2d[1] = input_keypoints_2d[1] * 0
+
+        # input_keypoints_2d_ori = np.zeros_like(input_keypoints_2d)
+        # input_keypoints_2d_ori[:, :-1] = 256 * (input_keypoints_2d[:, :-1] + 0.5)
+        # input_keypoints_2d_ori[:, -1] = input_keypoints_2d[:, -1]
+
+        # print(type(img_patch))
+        # img_patch_np = np.transpose(img_patch, (1,2,0))
+        # print(img_patch_np.shape)
+        # img_patch_np = img_patch_np * np.array([0.229, 0.224, 0.225]).astype(np.float32)
+        # img_patch_np = img_patch_np + np.array([0.485, 0.456, 0.406]).astype(np.float32)
+        # input_keypoints_2d_img = render_openpose(255*img_patch_np.copy(), input_keypoints_2d_ori)
+        # vis_path = f"./demo_out/input_keypoints_2d_img.jpg"
+        # cv2.imwrite(vis_path, input_keypoints_2d_img[:, :, ::-1])
+        # print(vis_path)
+
+        item = {}
         item['img'] = img_patch
         item['mask'] = mask_patch
         # item['img_og'] = image
         # item['mask_og'] = mask
+        item['input_keypoints_2d'] = input_keypoints_2d.astype(np.float32)
         item['keypoints_2d'] = keypoints_2d.astype(np.float32)
         item['keypoints_3d'] = keypoints_3d.astype(np.float32)
         item['orig_keypoints_2d'] = orig_keypoints_2d
