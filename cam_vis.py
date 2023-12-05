@@ -201,6 +201,7 @@ def main():
                     
                     
                     
+                    
                     test_dict = {
                     'input_keypoints_2d': combined_keypoints}
                     # print(type(item))
@@ -278,6 +279,8 @@ def main():
             assert False, "No detections found by YOLOv8"
 
         output_test = model(test_dict)
+        print(output_test['pred_keypoints_3d'])
+        print(output_test['pred_vertices'])
         # print(output_test)
         
         #Image presentation section
