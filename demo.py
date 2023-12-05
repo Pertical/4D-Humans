@@ -12,6 +12,9 @@ from hmr2.datasets.vitdet_dataset import ViTDetDataset, DEFAULT_MEAN, DEFAULT_ST
 from hmr2.utils.renderer import Renderer, cam_crop_to_full
 from ultralytics import YOLO
 
+yolo_detector = YOLO("yolov8n.pt")
+yolo_detector.predict(classes=0)
+
 LIGHT_BLUE=(0.65098039,  0.74117647,  0.85882353)
 
 def main():
@@ -50,7 +53,7 @@ def main():
     #     detectron2_cfg.model.roi_heads.box_predictors[i].test_score_thresh = 0.25
     # detector = DefaultPredictor_Lazy(detectron2_cfg)
     
-    yolo_detector = YOLO("yolov8n.pt")
+    
 
     # Setup the renderer
     renderer = Renderer(model_cfg, faces=model.smpl.faces)
