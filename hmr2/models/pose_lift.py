@@ -102,9 +102,14 @@ class PoseLift(pl.LightningModule):
             self.discriminator = Discriminator()
 
         # Define loss functions
-        self.keypoint_3d_loss = Keypoint3DLoss(loss_type='l1', reduction=cfg.TRAIN.LOSS_REDUCTION)
-        self.keypoint_2d_loss = Keypoint2DLoss(loss_type='l1', reduction=cfg.TRAIN.LOSS_REDUCTION)
-        self.smpl_parameter_loss = ParameterLoss(reduction=cfg.TRAIN.LOSS_REDUCTION)
+        # self.keypoint_3d_loss = Keypoint3DLoss(loss_type='l1', reduction=cfg.TRAIN.LOSS_REDUCTION)
+        # self.keypoint_2d_loss = Keypoint2DLoss(loss_type='l1', reduction=cfg.TRAIN.LOSS_REDUCTION)
+        # self.smpl_parameter_loss = ParameterLoss(reduction=cfg.TRAIN.LOSS_REDUCTION)
+
+        self.keypoint_3d_loss = Keypoint3DLoss(loss_type='l1')
+        self.keypoint_2d_loss = Keypoint2DLoss(loss_type='l1')
+        self.smpl_parameter_loss = ParameterLoss()
+
 
         # Instantiate SMPL model
         smpl_cfg = {k.lower(): v for k,v in dict(cfg.SMPL).items()}
