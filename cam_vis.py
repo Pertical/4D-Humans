@@ -13,6 +13,10 @@ from typing import Optional, Tuple
 from hmr2.models import HMR2, download_models, load_poselift, Poselift_CHECKPOINT, pose_lift
 from hmr2.utils import recursive_to
 from hmr2.configs import CACHE_DIR_4DHUMANS
+from datetime import datetime
+from hmr2.datasets.utils import (convert_cvimg_to_tensor,
+                    expand_to_aspect_ratio,
+                    generate_image_patch_cv2)
 
 
 import os
@@ -82,7 +86,7 @@ def main():
     download_models(CACHE_DIR_4DHUMANS)
     model, model_cfg = load_poselift(args.checkpoint)
     model.eval()
-    J_regressor = np.load('/media/maillab/peter/4D-Humans/data/J_regressor_coco.npy')
+    # J_regressor = np.load('/media/maillab/peter/4D-Humans/data/J_regressor_coco.npy')
 
     # # ------------------setup model------------------
     # device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -106,8 +110,30 @@ def main():
     model_start_time = 0
     model_end_time = 0
     
+    """video recording"""
+    current_datetime = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+    file_name = str(current_datetime)
+
+    expriment_video_dir = 'Expriment_Data_Collection_COKE_DiffCamLoc2_0820/Expriment_Videos'
+    os.makedirs(expriment_video_dir, exist_ok=True)
+
+    # Video Recording Section
+    # fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    
+    # scene_video_path = os.path.join(expriment_video_dir, f'Scence_Vid_{file_name}.avi')
+    # scene_video_writer = cv2.VideoWriter(scene_video_path, fourcc, 12, (width, height), 1)
+    
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    scene_video_path = os.path.join(expriment_video_dir, f'Scence_Vid_{file_name}.avi')
+    # fixed_fps = 30  # You can adjust this value
+    scene_video_writer = cv2.VideoWriter(scene_video_path, fourcc, 8, (width, height))
+    # scene_video_writer = cv2.VideoWriter(scene_video_path, fourcc, 12, (width, height))
+
+
+    
     while True:
         # ------------------load detector------------------
+        
         frames = pipeline.wait_for_frames()
         color_frame = frames.get_color_frame()
 
@@ -135,9 +161,9 @@ def main():
                 # -------------------------------------
                 
                 probs = result.probs
-
-
                 boxes = boxes.data.cpu().numpy() # [x1, y1, x2, y2], cof, class
+                
+                
              
                 
 
@@ -154,10 +180,17 @@ def main():
 
                     max_prob_index_box = np.argmax(boxes[:, -2])
                     max_prob_box = boxes[max_prob_index_box]  
-
+                    
+                    """box size"""
+                    x1, y1, x2, y2 = max_prob_box[0], max_prob_box[1], max_prob_box[2], max_prob_box[3]
+                    center_x = (x2-x1)//2
+                    center_y = (y2-y1)//2
+                    
+                    box_center = np.array([center_x, center_y])
+                    box_size  = (x2-x1) * (y2-y1)
                     
                     
-                    
+                    img_size = 256
                     # label the person id
                     cls_id = max_prob_box[-1]
                     class_list = YOLO_model.model.names
@@ -186,8 +219,13 @@ def main():
                     # keypoints = torch.from_numpy(keypoints).to(device)
                     # keypoints = keypoints.reshape(1,17,3)
                     
+                    
+                    """try render"""            
+                
                     test_dict = {
-                    'input_keypoints_2d': combined_keypoints}
+                    'input_keypoints_2d': combined_keypoints,
+                    'box_center' : box_center,
+                    }
                     # BBOX_SHAPE = self.cfg.MODEL.get('BBOX_SHAPE', None)
                     # bbox_size = expand_to_aspect_ratio(scale*200, target_aspect_ratio=BBOX_SHAPE).max()
 
@@ -216,8 +254,7 @@ def main():
                                 # 17 points
                                 # -----------------------------boxes-----------------
                     
-                                x1, y1, x2, y2 = max_prob_box[0], max_prob_box[1], max_prob_box[2], max_prob_box[3]
-                                box_center = (x2-x1)//2
+                                
                                             
                                 pose_keypoints_2d = keypoints[0, :, :2]
                                 # print(pose_keypoints_2d)
@@ -242,7 +279,12 @@ def main():
         # model_inference_time = model_end_time - model_start_time
         # print("Model inference time: ", model_inference_time)
         
-
+        
+        
+        
+        
+        
+        
         box_image_T =torch.from_numpy(color_image.copy().transpose(2, 0, 1)).float().to(device)
         #print(box_image_T.shape, "box_image_T shape")
         box_image = renderer(output_pose['pred_vertices'][0].detach().cpu().numpy(),
@@ -251,32 +293,36 @@ def main():
                                         mesh_base_color=LIGHT_BLUE,
                                         scene_bg_color=(0, 0, 0),
                                         )
-        # print(output_pose['pred_keypoints_3d'].shape) # torch.Size([1, 44, 3])
-        # print(output_pose['pred_vertices'].shape) # torch.Size([1, 6890, 3])
-        # print(J_regressor.shape,"J regressor shape coco") # (?,6890)
-        output_3d_kpts=J_regressor@output_pose['pred_vertices'].detach().cpu().numpy().squeeze()
-        output_3d_kpts=np.ascontiguousarray(output_3d_kpts.reshape(-1,3))#*640
-        # print(output_3d_kpts.shape, "output_3d_kpts shape")
-        # print(output_3d_kpts)
         
-        # print(output_3d_kpts[0,:], "output_3d_kpts 0") # (17, 3)
-        # # print(output_3d_kpts.shape, "output_3d_kpts shape") # (17, 3)
-        #print(output_pose.keys())
-        # print(output_pose['pred_cam'], output_pose['pred_cam_t'],"pred_cam_/t shape")
-        """find smpl coco regressor"""
-        # now do pnp
-        camera_matrix = np.array([[1300, 0, width/2.0], [0, 1300, height/2.0], [0, 0, 1]])
-        dist_coeffs = np.zeros((4,1))
-        pose_keypoints_2d=np.ascontiguousarray(pose_keypoints_2d.reshape(-1,2))
-        _,Rvec,Tvec=cv2.solvePnP(output_3d_kpts, pose_keypoints_2d, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
-        # Rvec=output_pose['pred_cam'].detach().cpu().numpy().squeeze()
-        # Tvec=output_pose['pred_cam_t'].detach().cpu().numpy().squeeze()
-        verts_2d,_=cv2.projectPoints(output_pose['pred_vertices'].detach().cpu().numpy().squeeze(), Rvec, Tvec, camera_matrix, dist_coeffs)
-        verts_2d=np.ascontiguousarray(verts_2d.reshape(-1,2))
-        # verts_2d[:,1]=height-verts_2d[:,1]
-        # verts_2d[:,0]=width-verts_2d[:,0]
-        print(verts_2d.shape, "verts_2d shape")
-        # now draw verts!
+        
+        # # print(output_pose['pred_keypoints_3d'].shape) # torch.Size([1, 44, 3])
+        # # print(output_pose['pred_vertices'].shape) # torch.Size([1, 6890, 3])
+        # # print(J_regressor.shape,"J regressor shape coco") # (?,6890)
+        
+        # output_3d_kpts=J_regressor@output_pose['pred_vertices'].detach().cpu().numpy().squeeze()
+        # output_3d_kpts=np.ascontiguousarray(output_3d_kpts.reshape(-1,3))#*640
+        
+        # # print(output_3d_kpts.shape, "output_3d_kpts shape")
+        # # print(output_3d_kpts)
+        
+        # # print(output_3d_kpts[0,:], "output_3d_kpts 0") # (17, 3)
+        # # # print(output_3d_kpts.shape, "output_3d_kpts shape") # (17, 3)
+        # #print(output_pose.keys())
+        # # print(output_pose['pred_cam'], output_pose['pred_cam_t'],"pred_cam_/t shape")
+        # """find smpl coco regressor"""
+        # # now do pnp
+        # camera_matrix = np.array([[1300, 0, width/2.0], [0, 1300, height/2.0], [0, 0, 1]])
+        # dist_coeffs = np.zeros((4,1))
+        # pose_keypoints_2d=np.ascontiguousarray(pose_keypoints_2d.reshape(-1,2))
+        # _,Rvec,Tvec=cv2.solvePnP(output_3d_kpts, pose_keypoints_2d, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
+        # # Rvec=output_pose['pred_cam'].detach().cpu().numpy().squeeze()
+        # # Tvec=output_pose['pred_cam_t'].detach().cpu().numpy().squeeze()
+        # verts_2d,_=cv2.projectPoints(output_pose['pred_vertices'].detach().cpu().numpy().squeeze(), Rvec, Tvec, camera_matrix, dist_coeffs)
+        # verts_2d=np.ascontiguousarray(verts_2d.reshape(-1,2))
+        # # verts_2d[:,1]=height-verts_2d[:,1]
+        # # verts_2d[:,0]=width-verts_2d[:,0]
+        # print(verts_2d.shape, "verts_2d shape")
+        # # now draw verts!
 
 
         # for i in range(verts_2d.shape[0]):
@@ -310,9 +356,16 @@ def main():
         cv2.putText(output_image, "FPS: " + str(int(FPS)), (int(20), int(20)), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
         cv2.imshow('Output', output_image)
         previous_frame_time = new_frame_time
+        
+        """recording"""
+        # depth = output_image.dtype
+        # print("The depth of the image is:", depth)
+        output_image_normalized = cv2.normalize(output_image, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+        output_image_uint8 = np.uint8(output_image_normalized)
 
-        # humr_result = hmr_traker.get_detections(color_image, 'frame_name', 0)
-        # hmr_traker.visualize(color_image, humr_result)
+        # Writing frame to video
+        scene_video_writer.write(output_image_uint8)
+
 
         key = cv2.waitKey(1)
         if key & 0xFF == ord('q') or key == 27:
@@ -321,7 +374,9 @@ def main():
 
 
     pipeline.stop()
+    scene_video_writer.release()
     cv2.destroyAllWindows()
+    
 
 
 if __name__ == '__main__':
